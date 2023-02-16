@@ -19,12 +19,14 @@ import { Types } from 'mongoose';
 import { getPagination, getPaginationData } from 'src/utils/string.handler';
 import { TeamInviteService } from '../service/team.invite.service';
 import { appConfig } from 'src/config/app';
+import { UserService } from 'src/users/service/user.service';
 @Controller('teams')
 @UseGuards(SessionAuthGuard)
 export class TeamController {
   constructor(
     private readonly team: TeamService,
     private readonly invite: TeamInviteService,
+    private readonly user: UserService,
   ) {}
   @Post('/')
   async handleTeamCreation(
@@ -111,6 +113,44 @@ export class TeamController {
         response.teams,
       );
       return record;
+    } catch (e) {
+      throw new HttpException(
+        e?.['message'] || 'Error',
+        e?.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('/:id')
+  async handleGetTeamDetails(
+    @Param('id') id: Types.ObjectId,
+    @Req() req: { [key: string]: any },
+  ) {
+    try {
+      const sessionPayload: AuthSessionPayload = req.payload || null;
+      //   console.log({ sessionPayload });
+      if (
+        sessionPayload?.role !== 'ADMIN' &&
+        sessionPayload?.t !== String(id)
+      ) {
+        throw new Error('Invalid team id passed ');
+      }
+      const data = await this.team.getTeamById(new Types.ObjectId(id), {
+        masterPassword: 0,
+      });
+      if (!data)
+        throw new HttpException('Invalid request', HttpStatus.NOT_FOUND);
+      if (
+        sessionPayload?.role === 'ADMIN' &&
+        String(data?.createdBy) !== sessionPayload.id
+      ) {
+        throw new HttpException(
+          'Invalid team id passed ',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      const admin = await this.user.getUserById(data.createdBy);
+      return { team: data, admin };
     } catch (e) {
       throw new HttpException(
         e?.['message'] || 'Error',

@@ -27,8 +27,8 @@ export class TeamService {
     return { teams, count };
   }
 
-  async getTeamById(id: Types.ObjectId) {
-    return await this.team.findById(id);
+  async getTeamById(id: Types.ObjectId, o?: { [key: string]: any }) {
+    return await this.team.findById(id, o);
   }
   async getAllTeams(id: Types.ObjectId) {
     const x = await this.team.find({ createdBy: id });

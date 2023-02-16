@@ -1,0 +1,56 @@
+version: "3"
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      # These ports are in format <host-port>:<container-port>
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '7001:81' # Admin Web Port
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "npm"
+      DB_MYSQL_PASSWORD: "npm"
+      DB_MYSQL_NAME: "npm"
+      # Uncomment this if IPv6 is not enabled on your host
+      # DISABLE_IPV6: 'true'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+
+  db:
+    image: 'jc21/mariadb-aria:latest'
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 'npm'
+      MYSQL_DATABASE: 'npm'
+      MYSQL_USER: 'npm'
+      MYSQL_PASSWORD: 'npm'
+    volumes:
+      - ./data/mysql_1:/var/lib/mysql
+  mongo-db:
+      image: 'mongo'
+      restart: always
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: user
+        MONGO_INITDB_ROOT_PASSWORD: local1234
+  sucre-vault:
+    image: 'vault_droid_secure:1.0.1'
+    restart: unless-stopped
+    volumes:
+      - ./data/:/data
+    ports:
+      - '7000:3001'
+    environment:
+      MONGO_DATABASE_HOST: 'mongo-db'
+      MONGO_DATABASE_PORT: 27017
+      MONGO_DATABASE_NAME: 'vault_db'
+      MONGO_DATABASE_USER_NAME: 'user'
+      MONGO_DATABASE_PASSWORD: 'local1234'
+      APP_URL_FRONT_END: ''
+    depends_on:
+      - mongo-db
